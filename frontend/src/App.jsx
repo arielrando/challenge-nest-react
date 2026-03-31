@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { apiCall } from './api.js';
+import { apiCall, buildApiUrl } from './api.js';
 import { getDemoLoginDefaults } from './demo/authDefaults.js';
 import { buildDemoDetailsBody, getDemoCategoryId } from './demo/buildDemoDetails.js';
 
@@ -7,7 +7,7 @@ function useDomainEventStream(onMessage) {
   const [sseStatus, setSseStatus] = useState('connecting');
 
   useEffect(() => {
-    const es = new EventSource('/events/stream');
+    const es = new EventSource(buildApiUrl('/events/stream'));
     es.onopen = () => setSseStatus('open');
     es.onerror = () => setSseStatus('error');
     es.onmessage = (ev) => {
