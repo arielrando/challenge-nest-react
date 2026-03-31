@@ -1,30 +1,35 @@
-# Ecommerce App with Nest.js and Postgres
+# Ecommerce App with NestJS and PostgreSQL
 
 ## Description
 
-This project is an ecommerce application built using Nest.js and Postgres. The focus is on writing clean, modular, and testable code, and following a well-organized project structure.
+This project is an ecommerce API built with NestJS, PostgreSQL, and TypeORM.  
+It now includes a small React + Vite frontend (`frontend/`) used to validate the full flow end-to-end.
 
 ## Technology Stack
 
-- Nest.js
+- NestJS
 - PostgreSQL
 - TypeORM
 - Jest
-- `@nestjs/event-emitter` (eventos de dominio en proceso)
-- React + Vite (demo en `frontend/`)
+- `@nestjs/event-emitter`
+- React + Vite
 
-## Domain events
+## Domain Events
 
-Tras crear un borrador de producto o activarlo, la aplicación emite eventos (`product.created`, `product.activated`). Los consumidores viven en `src/domain-events/` y no se importan desde `ProductModule`, para no acoplar módulos: el flujo usa el bus global configurado en `AppModule`.
+After creating a product draft or activating a product, the app emits:
 
-Para la demo web, esos mismos hechos se reenvían por **Server-Sent Events**: `GET /events/stream` (sin envolver en el interceptor JSON estándar).
+- `product.created`
+- `product.activated`
+
+Consumers live in `src/domain-events/` and are not imported from `ProductModule`, so modules remain decoupled.  
+For the frontend demo, those events are forwarded through SSE at `GET /events/stream`.
 
 ## Frontend (React)
 
-La UI vive en **`frontend/`** dentro del mismo repositorio (un solo clon; el proxy de Vite apunta al API en el puerto 3000). No hace falta un repo aparte salvo preferencia de equipo.
+The UI is inside this same repository under `frontend/`.
 
-1. Levantá el backend en `http://localhost:3000`.
-2. En otra terminal:
+1. Start backend at `http://localhost:3000`
+2. In another terminal:
 
 ```bash
 cd frontend
@@ -32,31 +37,47 @@ npm install
 npm run dev
 ```
 
-3. Abrí `http://localhost:5173`, iniciá sesión (p. ej. admin del seed), ejecutá el flujo crear → detalles → activar. La lista inferior muestra eventos **`product.created`** y **`product.activated`** en vivo vía SSE, además de llamadas REST.
+3. Open `http://localhost:5173`, log in (for example seed admin), and run:
+   create draft -> add details -> activate.
 
-Variable opcional al arrancar Vite en el host: `API_PROXY_TARGET=http://127.0.0.1:3000` si el API no está en el host por defecto.
+The bottom panel shows `product.created` and `product.activated` via SSE, plus REST responses.
 
-**Frontend con Docker** (misma red que el API; el proxy usa el hostname `api`):
+Useful frontend variables:
+
+- `API_PROXY_TARGET=http://127.0.0.1:3000` (for local `vite dev` proxy)
+- `VITE_API_BASE_URL=https://your-api.onrender.com` (for deployed frontend calling deployed backend)
+
+Frontend with Docker:
 
 ```bash
 docker compose up frontend
 ```
 
-O junto con todo: `docker compose up`. La UI queda en **http://localhost:5173**. La primera vez el contenedor ejecuta `npm install` dentro del volumen `frontend_node_modules` (puede tardar un poco).
+Or run everything:
+
+```bash
+docker compose up
+```
+
+Frontend is served at `http://localhost:5173`.
 
 ## Getting Started
 
-Clone the repository and open the project root (the folder that contains `package.json` and `docker-compose.yml`).
+Clone the repository and open the project root (where `package.json` and `docker-compose.yml` are located).
 
-### Environment variables
+### Environment Variables
 
-- **Raíz del repo:** copiá `.env.example` a **`.env`** (no se versiona). Ahí van credenciales de Postgres, `JWT_SECRET`, puertos y las variables **`VITE_*`** del demo de React. Docker Compose usa ese archivo para sustituir `${...}` en `docker-compose.yml`.
-- **Nest sin Docker:** sigue pudiendo usar `src/common/envs/development.env`; mantené `DATABASE_*` y secretos alineados con el `.env` de la raíz si usás ambos.
-- TypeORM espera **`DATABASE_USER`** (no `DATABASE_USERNAME`).
-
-**Frontend / Vite:** el `vite.config.js` lee el `.env` de la **raíz** (`envDir` apunta al monorepo). Solo las variables con prefijo **`VITE_`** llegan al código del navegador; igual **no son secretos** (cualquiera puede verlas en el bundle). Usalas solo para defaults de demo local.
-
-**Docker Compose:** ya no lleva contraseñas fijas; tomá los valores del `.env` (o los defaults del compose si no existe archivo).
+- Copy `.env.example` to `.env` in the project root.
+- Docker Compose reads the root `.env` for `${...}` substitutions.
+- Backend Nest **does not automatically read the root `.env`**.
+  It reads `src/common/envs` through:
+  - `src/config/index.ts`
+  - `src/database/typeorm/typeOrm.config.ts`
+- For non-Docker local runs, keep `src/common/envs/development.env` aligned with your desired DB credentials.
+- TypeORM expects `DATABASE_USER` (not `DATABASE_USERNAME`).
+- Backend CORS can be configured with:
+  - `FRONTEND_ALLOWED_ORIGINS=https://my-front.onrender.com,http://localhost:5173`
+- In cloud, backend listens on `PORT` from environment (`main.ts` fallback is `3000`).
 
 ### Option A — API and Postgres with Docker
 
@@ -64,24 +85,26 @@ Clone the repository and open the project root (the folder that contains `packag
 docker compose up -d --build
 ```
 
-With the schema, TypeORM has **`synchronize: false`**, so you must run migrations **before** seeding or using the app against an empty database:
+Because `synchronize: false`, run migrations before seed/use on an empty DB:
 
 ```bash
 docker compose exec api npm run migration:run
 docker compose exec api npm run seed:run
 ```
 
-The API listens on port **3000**. If the `api` container was already running when you changed `docker-compose.yml`, recreate it so env vars apply: `docker compose up -d --force-recreate api`.
+If you changed compose env values while containers are already running:
 
-### Option B — Postgres in Docker, API on the host
+```bash
+docker compose up -d --force-recreate api
+```
 
-Start only Postgres (or use `docker compose up -d postgres` and stop the `api` service if you prefer):
+### Option B — Postgres in Docker, API on Host
 
 ```bash
 docker compose up -d postgres
 ```
 
-Install dependencies and point `DATABASE_HOST` to `localhost` in `src/common/envs/development.env` (see `.env.example`).
+Then run API on host:
 
 ```bash
 npm install
@@ -90,34 +113,23 @@ npm run seed:run
 npm run start:dev
 ```
 
-### Migrations
+Recommended order for a new database:
 
-```bash
-npm run migration:run
-```
-
-To generate a new migration after entity changes:
-
-```bash
-npm run migration:generate --name=<migrationName>
-```
-
-### Seed
-
-```bash
-npm run seed:run
-```
-
-Order for a **new** database: **migrations → seed → start app**.
+`migrations -> seed -> start app`
 
 ## Testing
 
-1. Install dependencies: `npm install`
-2. Run the tests: `npm run test`
+```bash
+npm install
+npm run test
+```
+or with docker
+
+```bash
+docker compose exec api npm run test
+```
 
 ## Contributing
-
-If you are interested in contributing to this project, please follow these guidelines:
 
 1. Fork this repository
 2. Make your changes
