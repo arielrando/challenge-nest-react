@@ -16,6 +16,7 @@ export async function apiCall(path, { method = 'GET', body, token } = {}) {
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
+
   const res = await fetch(buildApiUrl(path), {
     method,
     headers,
