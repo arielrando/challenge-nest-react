@@ -11,17 +11,25 @@ async function bootstrap() {
     'http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000';
   const allowedOrigins = allowedOriginsRaw
     .split(',')
-    .map((origin) => origin.trim())
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
     .filter(Boolean);
-    console.log(allowedOrigins);
+
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin) {
         callback(null, true);
         return;
       }
-      callback(new Error('Not allowed by CORS'));
+      const normalizedOrigin = origin.trim().replace(/\/+$/, '');
+      const allowed =
+        allowedOrigins.includes(normalizedOrigin) ||
+        allowedOrigins.some((pattern) => {
+          if (!pattern.startsWith('*.')) return false;
+          const suffix = pattern.slice(1); // ".onrender.com"
+          return normalizedOrigin.endsWith(suffix);
+        });
+      callback(null, allowed);
     },
     credentials: true,
   });
